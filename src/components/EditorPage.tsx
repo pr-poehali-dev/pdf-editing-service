@@ -10,6 +10,11 @@ interface TextElement {
   text: string;
   x: number;
   y: number;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  width: number;
+  height: number;
 }
 
 interface EditorPageProps {
@@ -118,20 +123,33 @@ export function EditorPage({
                     {textElements.map(element => (
                       <div
                         key={element.id}
-                        className="absolute cursor-pointer hover:bg-accent/10 p-2 rounded transition-colors pointer-events-auto"
-                        style={{ left: element.x, top: element.y }}
+                        className="absolute cursor-pointer hover:bg-accent/10 rounded transition-colors pointer-events-auto"
+                        style={{ 
+                          left: element.x, 
+                          top: element.y,
+                          fontSize: `${element.fontSize * 1.5}px`,
+                          fontFamily: element.fontFamily,
+                          fontWeight: element.fontWeight,
+                          minWidth: `${element.width}px`
+                        }}
                         onClick={() => onSelectElement(element.id)}
                       >
                         {selectedElement === element.id ? (
-                          <Input
+                          <input
                             value={element.text}
                             onChange={(e) => onTextEdit(element.id, e.target.value)}
                             onBlur={() => onSelectElement(null)}
                             autoFocus
-                            className="w-auto bg-white"
+                            className="bg-white border-2 border-accent rounded px-1 outline-none"
+                            style={{
+                              fontSize: `${element.fontSize * 1.5}px`,
+                              fontFamily: element.fontFamily,
+                              fontWeight: element.fontWeight,
+                              width: `${Math.max(element.width, element.text.length * element.fontSize)}px`
+                            }}
                           />
                         ) : (
-                          <span className="text-foreground bg-yellow-100/80 px-1">{element.text}</span>
+                          <span className="bg-yellow-100/60 hover:bg-yellow-200/80 px-1 rounded">{element.text}</span>
                         )}
                       </div>
                     ))}

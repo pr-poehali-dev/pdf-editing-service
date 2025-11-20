@@ -13,6 +13,11 @@ interface TextElement {
   text: string;
   x: number;
   y: number;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  width: number;
+  height: number;
 }
 
 function Index() {
@@ -69,11 +74,19 @@ function Index() {
         textContent.items.forEach((item: any, index: number) => {
           if (item.str && item.str.trim()) {
             const transform = item.transform;
+            const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
+            const fontFamily = item.fontName || 'Arial';
+            
             extractedElements.push({
               id: `${elementId++}`,
               text: item.str,
               x: transform[4],
-              y: 800 - transform[5] + ((pageNum - 1) * 850)
+              y: 800 - transform[5] + ((pageNum - 1) * 850),
+              fontSize: fontSize,
+              fontFamily: fontFamily,
+              fontWeight: item.fontName?.includes('Bold') ? 'bold' : 'normal',
+              width: item.width || 100,
+              height: item.height || fontSize
             });
           }
         });

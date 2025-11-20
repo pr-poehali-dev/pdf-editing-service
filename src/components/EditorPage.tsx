@@ -100,11 +100,37 @@ export function EditorPage({
           const page = await pdf.getPage(i);
           const viewport = page.getViewport({ scale });
           
-          await page.render({
-            canvasContext: context,
-            viewport: viewport,
-            transform: [1, 0, 0, 1, 0, yOffset]
-          }).promise;
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = viewport.width;
+          tempCanvas.height = viewport.height;
+          const tempContext = tempCanvas.getContext('2d');
+          
+          if (tempContext) {
+            await page.render({
+              canvasContext: tempContext,
+              viewport: viewport,
+              intent: 'display'
+            }).promise;
+            
+            const imageData = tempContext.getImageData(0, 0, viewport.width, viewport.height);
+            const data = imageData.data;
+            
+            for (let j = 0; j < data.length; j += 4) {
+              const r = data[j];
+              const g = data[j + 1];
+              const b = data[j + 2];
+              const brightness = (r + g + b) / 3;
+              
+              if (brightness < 250 && (r < 50 && g < 50 && b < 50)) {
+                data[j] = 255;
+                data[j + 1] = 255;
+                data[j + 2] = 255;
+              }
+            }
+            
+            tempContext.putImageData(imageData, 0, 0);
+            context.drawImage(tempCanvas, 0, yOffset);
+          }
           
           yOffset += viewport.height + pageGap;
         }

@@ -72,11 +72,7 @@ function Index() {
     }
   };
 
-  const handleElementDrag = (id: string, newX: number, newY: number) => {
-    setTextElements(prev =>
-      prev.map(el => el.id === id ? { ...el, x: newX, y: newY } : el)
-    );
-  };
+
 
   const extractTextFromPDF = async (file: File) => {
     try {
@@ -133,19 +129,24 @@ function Index() {
 
   const handleAiEdit = () => {
     if (aiPrompt.trim()) {
-      const allText = textElements.map(el => el.text).join(' ');
-      const modifiedText = allText + ' ' + aiPrompt;
+      const lines = aiPrompt.toLowerCase().split(/заменить|замени|поменять|измени/);
       
-      const words = modifiedText.split(' ');
-      const updatedElements = textElements.map((el, index) => {
-        if (words[index]) {
-          return { ...el, text: words[index] };
+      if (lines.length >= 2) {
+        const parts = lines[1].split(/на/);
+        if (parts.length >= 2) {
+          const searchText = parts[0].trim().replace(/["'«»]/g, '');
+          const replaceText = parts[1].trim().replace(/["'«»]/g, '');
+          
+          const updatedElements = textElements.map(el => ({
+            ...el,
+            text: el.text.replace(new RegExp(searchText, 'gi'), replaceText)
+          }));
+          
+          setTextElements(updatedElements);
+          setBulkEditText(updatedElements.map(el => el.text).join('\n'));
         }
-        return el;
-      });
+      }
       
-      setTextElements(updatedElements);
-      setBulkEditText(updatedElements.map(el => el.text).join('\n'));
       setAiPrompt('');
     }
   };
@@ -185,7 +186,6 @@ function Index() {
           onCloseFile={() => setPdfFile(null)}
           onBulkEdit={handleBulkEdit}
           onBulkEditTextChange={setBulkEditText}
-          onElementDrag={handleElementDrag}
         />
       )}
       

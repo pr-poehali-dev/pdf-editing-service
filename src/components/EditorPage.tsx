@@ -32,7 +32,6 @@ interface EditorPageProps {
   onCloseFile: () => void;
   onBulkEdit: () => void;
   onBulkEditTextChange: (text: string) => void;
-  onElementDrag: (id: string, x: number, y: number) => void;
 }
 
 export function EditorPage({
@@ -49,12 +48,9 @@ export function EditorPage({
   onAiEdit,
   onCloseFile,
   onBulkEdit,
-  onBulkEditTextChange,
-  onElementDrag
+  onBulkEditTextChange
 }: EditorPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (pdfFile && canvasRef.current) {
@@ -119,34 +115,7 @@ export function EditorPage({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent, element: TextElement) => {
-    if (selectedElement === element.id) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const parentRect = e.currentTarget.parentElement?.parentElement?.getBoundingClientRect();
-    
-    if (parentRect) {
-      setDraggingId(element.id);
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    }
-  };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!draggingId) return;
-    
-    const containerRect = e.currentTarget.getBoundingClientRect();
-    const newX = e.clientX - containerRect.left - dragOffset.x;
-    const newY = e.clientY - containerRect.top - dragOffset.y;
-    
-    onElementDrag(draggingId, Math.max(0, newX), Math.max(0, newY));
-  };
-
-  const handleMouseUp = () => {
-    setDraggingId(null);
-  };
   return (
     <div className="container mx-auto px-6 py-8 animate-fade-in">
       <div className="mb-6">
@@ -196,31 +165,24 @@ export function EditorPage({
                     />
                   </div>
                 ) : (
-                  <div 
-                    className="bg-white border-2 rounded-lg overflow-auto max-h-[700px] relative"
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                  >
+                  <div className="bg-white border-2 rounded-lg overflow-auto max-h-[700px] relative">
                     <canvas ref={canvasRef} className="w-full" />
                     <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                       {textElements.map(element => (
                         <div
                           key={element.id}
-                          className="absolute cursor-move hover:bg-blue-50/50 hover:outline hover:outline-1 hover:outline-blue-300 rounded transition-all pointer-events-auto"
+                          className="absolute cursor-pointer hover:bg-blue-50/30 rounded transition-all pointer-events-auto"
                           style={{ 
                             left: `${element.x}px`, 
                             top: `${element.y}px`,
                             fontSize: `${element.fontSize * 1.5}px`,
                             fontFamily: element.fontFamily,
                             fontWeight: element.fontWeight,
-                            minWidth: `${element.width}px`,
-                            opacity: draggingId === element.id ? 0.7 : 1,
                             color: '#000',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            lineHeight: '1.2'
                           }}
-                          onMouseDown={(e) => handleMouseDown(e, element)}
-                          onDoubleClick={() => onSelectElement(element.id)}
+                          onClick={() => onSelectElement(element.id)}
                         >
                           {selectedElement === element.id ? (
                             <input
@@ -233,14 +195,13 @@ export function EditorPage({
                                 fontSize: `${element.fontSize * 1.5}px`,
                                 fontFamily: element.fontFamily,
                                 fontWeight: element.fontWeight,
-                                width: `${Math.max(element.width, element.text.length * element.fontSize)}px`,
+                                width: `${Math.max(100, element.text.length * element.fontSize * 0.6)}px`,
                                 color: '#000'
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <span className="px-1 select-none">{element.text}</span>
+                            <span className="select-none">{element.text}</span>
                           )}
                         </div>
                       ))}
@@ -277,11 +238,11 @@ export function EditorPage({
               <h3 className="font-heading font-bold text-xl">AI-помощник</h3>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Опишите какой текст нужно заменить
+              AI прочитал весь текст из PDF. Попросите заменить любую фразу.
             </p>
             <div className="space-y-4">
               <Textarea
-                placeholder="Например: замени 'текста' на 'документа'"
+                placeholder="Замени 'старый текст' на 'новый текст'"
                 value={aiPrompt}
                 onChange={(e) => onAiPromptChange(e.target.value)}
                 rows={4}

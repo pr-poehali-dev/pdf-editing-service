@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { HomePage } from '@/components/HomePage';
 import { EditorPage } from '@/components/EditorPage';
@@ -42,9 +42,48 @@ function Index() {
     setCurrentView('home');
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setPdfFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setPdfFile(file);
+      
+      await extractTextFromPDF(file);
+    }
+  };
+
+  const extractTextFromPDF = async (file: File) => {
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      const extractedElements: TextElement[] = [];
+      let elementId = 1;
+      
+      for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 3); pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        
+        textContent.items.forEach((item: any, index: number) => {
+          if (item.str && item.str.trim()) {
+            const transform = item.transform;
+            extractedElements.push({
+              id: `${elementId++}`,
+              text: item.str,
+              x: transform[4],
+              y: 800 - transform[5] + ((pageNum - 1) * 850)
+            });
+          }
+        });
+      }
+      
+      if (extractedElements.length > 0) {
+        setTextElements(extractedElements);
+      }
+    } catch (error) {
+      console.error('Ошибка при чтении PDF:', error);
     }
   };
 

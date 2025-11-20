@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,42 @@ export function EditorPage({
   onAiEdit,
   onCloseFile
 }: EditorPageProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (pdfFile && canvasRef.current) {
+      renderPDF();
+    }
+  }, [pdfFile]);
+
+  const renderPDF = async () => {
+    if (!pdfFile || !canvasRef.current) return;
+
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+
+      const viewport = page.getViewport({ scale: 1.5 });
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+
+      if (context) {
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+      }
+    } catch (error) {
+      console.error('Ошибка рендеринга PDF:', error);
+    }
+  };
   return (
     <div className="container mx-auto px-6 py-8 animate-fade-in">
       <div className="mb-6">
@@ -75,27 +112,30 @@ export function EditorPage({
                   </Button>
                 </div>
 
-                <div className="bg-white border-2 rounded-lg p-8 min-h-[600px] relative">
-                  {textElements.map(element => (
-                    <div
-                      key={element.id}
-                      className="absolute cursor-pointer hover:bg-accent/10 p-2 rounded transition-colors"
-                      style={{ left: element.x, top: element.y }}
-                      onClick={() => onSelectElement(element.id)}
-                    >
-                      {selectedElement === element.id ? (
-                        <Input
-                          value={element.text}
-                          onChange={(e) => onTextEdit(element.id, e.target.value)}
-                          onBlur={() => onSelectElement(null)}
-                          autoFocus
-                          className="w-auto"
-                        />
-                      ) : (
-                        <span className="text-foreground">{element.text}</span>
-                      )}
-                    </div>
-                  ))}
+                <div className="bg-white border-2 rounded-lg overflow-auto max-h-[700px] relative">
+                  <canvas ref={canvasRef} className="w-full" />
+                  <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                    {textElements.map(element => (
+                      <div
+                        key={element.id}
+                        className="absolute cursor-pointer hover:bg-accent/10 p-2 rounded transition-colors pointer-events-auto"
+                        style={{ left: element.x, top: element.y }}
+                        onClick={() => onSelectElement(element.id)}
+                      >
+                        {selectedElement === element.id ? (
+                          <Input
+                            value={element.text}
+                            onChange={(e) => onTextEdit(element.id, e.target.value)}
+                            onBlur={() => onSelectElement(null)}
+                            autoFocus
+                            className="w-auto bg-white"
+                          />
+                        ) : (
+                          <span className="text-foreground bg-yellow-100/80 px-1">{element.text}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="mt-4 flex gap-2">

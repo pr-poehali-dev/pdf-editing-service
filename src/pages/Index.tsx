@@ -25,11 +25,7 @@ function Index() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [textElements, setTextElements] = useState<TextElement[]>([
-    { id: '1', text: 'Образец текста 1', x: 50, y: 100 },
-    { id: '2', text: 'Образец текста 2', x: 50, y: 200 },
-    { id: '3', text: 'Образец текста 3', x: 50, y: 300 }
-  ]);
+  const [textElements, setTextElements] = useState<TextElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
   const [bulkEditMode, setBulkEditMode] = useState(false);
@@ -93,11 +89,12 @@ function Index() {
       const extractedElements: TextElement[] = [];
       let elementId = 1;
       
-      for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 3); pageNum++) {
+      for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 5); pageNum++) {
         const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 });
         const textContent = await page.getTextContent();
         
-        textContent.items.forEach((item: any, index: number) => {
+        textContent.items.forEach((item: any) => {
           if (item.str && item.str.trim()) {
             const transform = item.transform;
             const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
@@ -106,13 +103,13 @@ function Index() {
             extractedElements.push({
               id: `${elementId++}`,
               text: item.str,
-              x: transform[4],
-              y: 800 - transform[5] + ((pageNum - 1) * 850),
+              x: transform[4] * 1.5,
+              y: (viewport.height - transform[5] * 1.5) + ((pageNum - 1) * (viewport.height + 20)),
               fontSize: fontSize,
               fontFamily: fontFamily,
               fontWeight: item.fontName?.includes('Bold') ? 'bold' : 'normal',
-              width: item.width || 100,
-              height: item.height || fontSize
+              width: item.width * 1.5 || 100,
+              height: fontSize
             });
           }
         });
@@ -120,6 +117,8 @@ function Index() {
       
       if (extractedElements.length > 0) {
         setTextElements(extractedElements);
+        const allText = extractedElements.map(el => el.text).join('\n');
+        setBulkEditText(allText);
       }
     } catch (error) {
       console.error('Ошибка при чтении PDF:', error);
@@ -134,11 +133,19 @@ function Index() {
 
   const handleAiEdit = () => {
     if (aiPrompt.trim()) {
-      const newElements = textElements.map(el => ({
-        ...el,
-        text: el.text.replace(/текста/g, aiPrompt)
-      }));
-      setTextElements(newElements);
+      const allText = textElements.map(el => el.text).join(' ');
+      const modifiedText = allText + ' ' + aiPrompt;
+      
+      const words = modifiedText.split(' ');
+      const updatedElements = textElements.map((el, index) => {
+        if (words[index]) {
+          return { ...el, text: words[index] };
+        }
+        return el;
+      });
+      
+      setTextElements(updatedElements);
+      setBulkEditText(updatedElements.map(el => el.text).join('\n'));
       setAiPrompt('');
     }
   };

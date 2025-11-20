@@ -71,20 +71,48 @@ export function EditorPage({
 
       const arrayBuffer = await pdfFile.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(1);
-
-      const viewport = page.getViewport({ scale: 1.5 });
+      
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
 
       if (context) {
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise;
+        let totalHeight = 0;
+        const scale = 1.5;
+        const pageGap = 20;
+        
+        const numPages = Math.min(pdf.numPages, 5);
+        
+        for (let i = 1; i <= numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale });
+          totalHeight += viewport.height + (i < numPages ? pageGap : 0);
+        }
+        
+        const firstPage = await pdf.getPage(1);
+        const firstViewport = firstPage.getViewport({ scale });
+        
+        canvas.height = totalHeight;
+        canvas.width = firstViewport.width;
+        
+        context.fillStyle = '#f5f5f5';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        
+        let yOffset = 0;
+        for (let i = 1; i <= numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale });
+          
+          context.fillStyle = 'white';
+          context.fillRect(0, yOffset, viewport.width, viewport.height);
+          
+          await page.render({
+            canvasContext: context,
+            viewport: viewport,
+            transform: [1, 0, 0, 1, 0, yOffset]
+          }).promise;
+          
+          yOffset += viewport.height + pageGap;
+        }
       }
     } catch (error) {
       console.error('Ошибка рендеринга PDF:', error);
@@ -179,15 +207,17 @@ export function EditorPage({
                       {textElements.map(element => (
                         <div
                           key={element.id}
-                          className="absolute cursor-move hover:outline hover:outline-2 hover:outline-accent/50 rounded transition-all pointer-events-auto"
+                          className="absolute cursor-move hover:bg-blue-50/50 hover:outline hover:outline-1 hover:outline-blue-300 rounded transition-all pointer-events-auto"
                           style={{ 
-                            left: element.x, 
-                            top: element.y,
+                            left: `${element.x}px`, 
+                            top: `${element.y}px`,
                             fontSize: `${element.fontSize * 1.5}px`,
                             fontFamily: element.fontFamily,
                             fontWeight: element.fontWeight,
                             minWidth: `${element.width}px`,
-                            opacity: draggingId === element.id ? 0.7 : 1
+                            opacity: draggingId === element.id ? 0.7 : 1,
+                            color: '#000',
+                            whiteSpace: 'nowrap'
                           }}
                           onMouseDown={(e) => handleMouseDown(e, element)}
                           onDoubleClick={() => onSelectElement(element.id)}
@@ -203,13 +233,14 @@ export function EditorPage({
                                 fontSize: `${element.fontSize * 1.5}px`,
                                 fontFamily: element.fontFamily,
                                 fontWeight: element.fontWeight,
-                                width: `${Math.max(element.width, element.text.length * element.fontSize)}px`
+                                width: `${Math.max(element.width, element.text.length * element.fontSize)}px`,
+                                color: '#000'
                               }}
                               onClick={(e) => e.stopPropagation()}
                               onMouseDown={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <span className="px-1">{element.text}</span>
+                            <span className="px-1 select-none">{element.text}</span>
                           )}
                         </div>
                       ))}

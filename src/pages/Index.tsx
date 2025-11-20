@@ -32,6 +32,8 @@ function Index() {
   ]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkEditText, setBulkEditText] = useState('');
   const [tariffPrice, setTariffPrice] = useState('29.99');
   const [cryptoWallet, setCryptoWallet] = useState('');
 
@@ -54,6 +56,30 @@ function Index() {
       
       await extractTextFromPDF(file);
     }
+  };
+
+  const handleBulkEdit = () => {
+    if (bulkEditMode) {
+      const lines = bulkEditText.split('\n');
+      const updatedElements = textElements.map((el, index) => {
+        if (lines[index] !== undefined) {
+          return { ...el, text: lines[index] };
+        }
+        return el;
+      });
+      setTextElements(updatedElements);
+      setBulkEditMode(false);
+    } else {
+      const allText = textElements.map(el => el.text).join('\n');
+      setBulkEditText(allText);
+      setBulkEditMode(true);
+    }
+  };
+
+  const handleElementDrag = (id: string, newX: number, newY: number) => {
+    setTextElements(prev =>
+      prev.map(el => el.id === id ? { ...el, x: newX, y: newY } : el)
+    );
   };
 
   const extractTextFromPDF = async (file: File) => {
@@ -142,12 +168,17 @@ function Index() {
           textElements={textElements}
           selectedElement={selectedElement}
           aiPrompt={aiPrompt}
+          bulkEditMode={bulkEditMode}
+          bulkEditText={bulkEditText}
           onFileUpload={handleFileUpload}
           onTextEdit={handleTextEdit}
           onSelectElement={setSelectedElement}
           onAiPromptChange={setAiPrompt}
           onAiEdit={handleAiEdit}
           onCloseFile={() => setPdfFile(null)}
+          onBulkEdit={handleBulkEdit}
+          onBulkEditTextChange={setBulkEditText}
+          onElementDrag={handleElementDrag}
         />
       )}
       

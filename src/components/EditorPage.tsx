@@ -171,16 +171,16 @@ export function EditorPage({
                       {textElements.map(element => (
                         <div
                           key={element.id}
-                          className="absolute cursor-pointer hover:bg-blue-50/30 rounded transition-all pointer-events-auto"
+                          className="absolute cursor-pointer hover:bg-blue-100/20 pointer-events-auto"
                           style={{ 
                             left: `${element.x}px`, 
                             top: `${element.y}px`,
-                            fontSize: `${element.fontSize * 1.5}px`,
+                            fontSize: `${element.fontSize}px`,
                             fontFamily: element.fontFamily,
                             fontWeight: element.fontWeight,
-                            color: '#000',
-                            whiteSpace: 'nowrap',
-                            lineHeight: '1.2'
+                            color: '#000000',
+                            whiteSpace: 'pre',
+                            lineHeight: '1'
                           }}
                           onClick={() => onSelectElement(element.id)}
                         >
@@ -190,13 +190,15 @@ export function EditorPage({
                               onChange={(e) => onTextEdit(element.id, e.target.value)}
                               onBlur={() => onSelectElement(null)}
                               autoFocus
-                              className="bg-white border-2 border-accent rounded px-1 outline-none"
+                              className="bg-yellow-50 border-2 border-blue-500 outline-none"
                               style={{
-                                fontSize: `${element.fontSize * 1.5}px`,
+                                fontSize: `${element.fontSize}px`,
                                 fontFamily: element.fontFamily,
                                 fontWeight: element.fontWeight,
-                                width: `${Math.max(100, element.text.length * element.fontSize * 0.6)}px`,
-                                color: '#000'
+                                width: `${Math.max(element.width, element.text.length * element.fontSize * 0.55)}px`,
+                                color: '#000000',
+                                padding: '0',
+                                lineHeight: '1'
                               }}
                               onClick={(e) => e.stopPropagation()}
                             />

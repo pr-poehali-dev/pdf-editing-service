@@ -84,27 +84,35 @@ function Index() {
       
       const extractedElements: TextElement[] = [];
       let elementId = 1;
+      const scale = 1.5;
       
       for (let pageNum = 1; pageNum <= Math.min(pdf.numPages, 5); pageNum++) {
         const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.5 });
+        const viewport = page.getViewport({ scale });
         const textContent = await page.getTextContent();
+        
+        const pageGap = 20;
+        const pageOffsetY = (pageNum - 1) * (viewport.height + pageGap);
         
         textContent.items.forEach((item: any) => {
           if (item.str && item.str.trim()) {
-            const transform = item.transform;
-            const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
-            const fontFamily = item.fontName || 'Arial';
+            const tx = item.transform;
+            
+            const x = tx[4] * scale;
+            const y = (viewport.height - (tx[5] * scale)) + pageOffsetY;
+            
+            const fontHeight = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+            const fontSize = fontHeight * scale;
             
             extractedElements.push({
               id: `${elementId++}`,
               text: item.str,
-              x: transform[4] * 1.5,
-              y: (viewport.height - transform[5] * 1.5) + ((pageNum - 1) * (viewport.height + 20)),
+              x: x,
+              y: y - fontSize,
               fontSize: fontSize,
-              fontFamily: fontFamily,
-              fontWeight: item.fontName?.includes('Bold') ? 'bold' : 'normal',
-              width: item.width * 1.5 || 100,
+              fontFamily: item.fontName || 'sans-serif',
+              fontWeight: (item.fontName?.toLowerCase().includes('bold')) ? 'bold' : 'normal',
+              width: item.width * scale,
               height: fontSize
             });
           }

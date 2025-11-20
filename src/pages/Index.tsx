@@ -82,32 +82,54 @@ function Index() {
     if (!originalPdfBytes || textElements.length === 0) return;
 
     try {
-      const { PDFDocument, rgb } = await import('pdf-lib');
+      const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
       const pdfDoc = await PDFDocument.load(originalPdfBytes);
       const pages = pdfDoc.getPages();
       const scale = 1.5;
+      const pageGap = 20;
+      
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-      const sortedElements = [...textElements].sort((a, b) => {
-        const pageA = Math.floor(a.y / (pages[0].getHeight() * scale + 20));
-        const pageB = Math.floor(b.y / (pages[0].getHeight() * scale + 20));
-        if (pageA !== pageB) return pageA - pageB;
-        return a.y - b.y;
+      const groupedByPage: { [key: number]: typeof textElements } = {};
+      
+      textElements.forEach((element) => {
+        const firstPageHeight = pages[0].getHeight();
+        const pageIndex = Math.floor(element.y / (firstPageHeight * scale + pageGap));
+        
+        if (!groupedByPage[pageIndex]) {
+          groupedByPage[pageIndex] = [];
+        }
+        groupedByPage[pageIndex].push(element);
       });
 
-      sortedElements.forEach((element) => {
-        const pageIndex = Math.floor(element.y / (pages[0].getHeight() * scale + 20));
+      Object.keys(groupedByPage).forEach((pageIndexStr) => {
+        const pageIndex = parseInt(pageIndexStr);
         if (pageIndex >= 0 && pageIndex < pages.length) {
           const page = pages[pageIndex];
           const pageHeight = page.getHeight();
           
-          const realY = element.y - (pageIndex * (pageHeight * scale + 20));
-          const pdfY = pageHeight - (realY / scale);
-          
-          page.drawText(element.text, {
-            x: element.x / scale,
-            y: pdfY,
-            size: element.fontSize / scale,
-            color: rgb(0, 0, 0),
+          groupedByPage[pageIndex].forEach((element) => {
+            const realY = element.y - (pageIndex * (pageHeight * scale + pageGap));
+            const pdfY = pageHeight - (realY / scale) - (element.fontSize / scale);
+            
+            const font = element.fontWeight === 'bold' ? helveticaBold : helveticaFont;
+            
+            page.drawRectangle({
+              x: element.x / scale - 1,
+              y: pdfY - 2,
+              width: element.width / scale + 2,
+              height: element.fontSize / scale + 4,
+              color: rgb(1, 1, 1),
+            });
+            
+            page.drawText(element.text, {
+              x: element.x / scale,
+              y: pdfY,
+              size: element.fontSize / scale,
+              font: font,
+              color: rgb(0, 0, 0),
+            });
           });
         }
       });

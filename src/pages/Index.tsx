@@ -30,6 +30,7 @@ function Index() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkEditText, setBulkEditText] = useState('');
+  const [originalPdfBytes, setOriginalPdfBytes] = useState<ArrayBuffer | null>(null);
   const [tariffPrice, setTariffPrice] = useState('29.99');
   const [cryptoWallet, setCryptoWallet] = useState('');
 
@@ -50,7 +51,10 @@ function Index() {
       const file = e.target.files[0];
       setPdfFile(file);
       
-      await extractTextFromPDF(file);
+      const arrayBuffer = await file.arrayBuffer();
+      setOriginalPdfBytes(arrayBuffer);
+      
+      await extractTextFromPDF(file, arrayBuffer);
     }
   };
 
@@ -74,13 +78,60 @@ function Index() {
 
 
 
-  const extractTextFromPDF = async (file: File) => {
+  const handleSavePDF = async () => {
+    if (!originalPdfBytes || textElements.length === 0) return;
+
+    try {
+      const { PDFDocument, rgb } = await import('pdf-lib');
+      const pdfDoc = await PDFDocument.load(originalPdfBytes);
+      const pages = pdfDoc.getPages();
+      const scale = 1.5;
+
+      const sortedElements = [...textElements].sort((a, b) => {
+        const pageA = Math.floor(a.y / (pages[0].getHeight() * scale + 20));
+        const pageB = Math.floor(b.y / (pages[0].getHeight() * scale + 20));
+        if (pageA !== pageB) return pageA - pageB;
+        return a.y - b.y;
+      });
+
+      sortedElements.forEach((element) => {
+        const pageIndex = Math.floor(element.y / (pages[0].getHeight() * scale + 20));
+        if (pageIndex >= 0 && pageIndex < pages.length) {
+          const page = pages[pageIndex];
+          const pageHeight = page.getHeight();
+          
+          const realY = element.y - (pageIndex * (pageHeight * scale + 20));
+          const pdfY = pageHeight - (realY / scale);
+          
+          page.drawText(element.text, {
+            x: element.x / scale,
+            y: pdfY,
+            size: element.fontSize / scale,
+            color: rgb(0, 0, 0),
+          });
+        }
+      });
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = pdfFile?.name.replace('.pdf', '_edited.pdf') || 'edited.pdf';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка сохранения PDF:', error);
+    }
+  };
+
+  const extractTextFromPDF = async (file: File, arrayBuffer?: ArrayBuffer) => {
     try {
       const pdfjsLib = await import('pdfjs-dist');
       pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const buffer = arrayBuffer || await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
       
       const extractedElements: TextElement[] = [];
       let elementId = 1;
@@ -194,6 +245,7 @@ function Index() {
           onCloseFile={() => setPdfFile(null)}
           onBulkEdit={handleBulkEdit}
           onBulkEditTextChange={setBulkEditText}
+          onSavePDF={handleSavePDF}
         />
       )}
       

@@ -32,6 +32,7 @@ interface EditorPageProps {
   onCloseFile: () => void;
   onBulkEdit: () => void;
   onBulkEditTextChange: (text: string) => void;
+  onSavePDF: () => void;
 }
 
 export function EditorPage({
@@ -48,7 +49,8 @@ export function EditorPage({
   onAiEdit,
   onCloseFile,
   onBulkEdit,
-  onBulkEditTextChange
+  onBulkEditTextChange,
+  onSavePDF
 }: EditorPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -90,16 +92,13 @@ export function EditorPage({
         canvas.height = totalHeight;
         canvas.width = firstViewport.width;
         
-        context.fillStyle = '#f5f5f5';
+        context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
         
         let yOffset = 0;
         for (let i = 1; i <= numPages; i++) {
           const page = await pdf.getPage(i);
           const viewport = page.getViewport({ scale });
-          
-          context.fillStyle = 'white';
-          context.fillRect(0, yOffset, viewport.width, viewport.height);
           
           await page.render({
             canvasContext: context,
@@ -219,13 +218,13 @@ export function EditorPage({
                     <Icon name={bulkEditMode ? "Check" : "Edit"} size={16} className="mr-2" />
                     {bulkEditMode ? 'Применить изменения' : 'Редактировать весь текст'}
                   </Button>
-                  <Button variant="outline">
+                  <Button 
+                    onClick={onSavePDF}
+                    variant="outline"
+                    className="border-accent text-accent hover:bg-accent hover:text-white"
+                  >
                     <Icon name="Download" size={16} className="mr-2" />
-                    Сохранить PDF
-                  </Button>
-                  <Button variant="outline">
-                    <Icon name="RotateCcw" size={16} className="mr-2" />
-                    Отменить
+                    Скачать PDF
                   </Button>
                 </div>
               </div>
